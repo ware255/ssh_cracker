@@ -8,12 +8,19 @@ sshのパスワード解析ツールです。辞書攻撃、総当たり攻撃�
 * Other Unix...
 
 ## インスール方法
+Linux場合(だけ)
 ```
 sudo apt install libssl-dev libssh-dev
 git clone https://github.com/ware255/ssh_cracker.git
 cd ssh_cracker
 make
 ```
+
+## 実行方法
+```
+./ssh_cracker
+```
+これだけです。<br>
 
 ## 参考
 [libssh](https://www.libssh.org/)<br>
