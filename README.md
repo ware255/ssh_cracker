@@ -5,7 +5,7 @@ sshのパスワード解析ツールです。辞書攻撃、総当たり攻撃�
 ## 動作可能OS
 * Linux
 * Windows 10 ~
-* Other Unix...
+* other unix...
 
 ## インスール方法
 Linux場合(だけ)
