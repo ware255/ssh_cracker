@@ -17,10 +17,14 @@ make
 ```
 
 ## 実行方法
+使い方はこうです。
 ```
-./ssh_cracker
+./ssh_cracker -h <IP> -p <Port> -u <user_name>
 ```
-これだけです。<br>
+以下が例となります。<br>
+```
+./ssh_cracker -h 255.255.255.255 -p 22 -u user
+```
 
 ## 参考
 [libssh](https://www.libssh.org/)<br>
