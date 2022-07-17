@@ -36,9 +36,9 @@ void logo() {
 }
 
 #if __linux__
-unsigned int xor64(unsigned long w) {
+unsigned int xor64(unsigned long *w) {
     static unsigned long x;
-    x = w;
+    x = *w;
     x ^= (x << 7);
     return x ^= (x >> 9);
 }
@@ -71,7 +71,7 @@ void fake_ip() {
     inet_ntop(AF_INET, &sin->sin_addr.s_addr, buf, sizeof(buf));
 
     //IPアドレスの書き換え
-    sprintf(ip, "192.168.24.%d", xor64(w) % 255);
+    sprintf(ip, "192.168.24.%d", xor64(&w) % 255);
     sin->sin_addr.s_addr = inet_addr(ip);
     if (ioctl(soc, SIOCSIFADDR, &ifreq) < 0) {
         perror("[-]ioctl(SIOCSIFADDR)");
@@ -79,7 +79,7 @@ void fake_ip() {
         exit(1);
     }
 
-    sprintf(ip, "192.168.25.%d", xor64(w) % 255);
+    sprintf(ip, "192.168.25.%d", xor64(&w) % 255);
     sin = (struct sockaddr_in *)&ifreq.ifr_broadaddr;
     sin->sin_addr.s_addr = inet_addr(ip);
     if (ioctl(soc, SIOCSIFBRDADDR, &ifreq) < 0) {
@@ -88,7 +88,7 @@ void fake_ip() {
         exit(1);
     }
 
-    sprintf(ip, "255.255.%d.%d", xor64(w) % 255, xor64(w) % 255);
+    sprintf(ip, "255.255.%d.%d", xor64(&w) % 255, xor64(&w) % 255);
     sin = (struct sockaddr_in *)&ifreq.ifr_netmask;
     sin->sin_addr.s_addr = inet_addr(ip);
     if (ioctl(soc, SIOCSIFNETMASK, &ifreq) < 0) {
