@@ -31,3 +31,6 @@ make
 [Installing libssh](https://subscription.packtpub.com/book/web-development/9781789349863/app02/app02lvl1sec156/installing-libssh)<br>
 [SSH-Brute](https://github.com/Ace-Krypton/SSH-Brute/blob/main/ssh_bruter.cpp)<br>
 [パスワード解析の時間計測をするが、文字数を変えても時間が変化しない](https://teratail.com/questions/352431)<br>
+[【C言語】ioctlでIPアドレスの取得・書き換え方法](https://wireless-network.net/ioctl-ip/)<br>
+[Linux Programmer's Manual (7)](http://linuxjm.osdn.jp/html/LDP_man-pages/man7/netdevice.7.html)<br>
+[C++ compiling on Windows and Linux: ifdef switch [duplicate]](https://stackoverflow.com/questions/6649936/c-compiling-on-windows-and-linux-ifdef-switch)<br>
