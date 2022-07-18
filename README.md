@@ -10,7 +10,7 @@ sshのパスワード解析ツールです。辞書攻撃、総当たり攻撃�
 ## インスール方法
 Linux場合(だけ)
 ```
-sudo apt install libssl-dev libssh-dev
+sudo apt install libssl-dev libssh-dev gcc make
 git clone https://github.com/ware255/ssh_cracker.git
 cd ssh_cracker
 make
