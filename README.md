@@ -3,27 +3,27 @@ sshのパスワード解析ツールです。辞書攻撃、総当たり攻撃�
 ※使用する際は自己責任でお願いします＾＾<br>
 
 ## 動作可能OS
-* Linux
-* Windows 10 ~
-* other unix...
+* Linux x86_64
+* Windows 10 以降
+* など
 
 ## インスール方法
 Linux場合(だけ)
 ```
-sudo apt install libssl-dev libssh-dev gcc make
-git clone https://github.com/ware255/ssh_cracker.git
-cd ssh_cracker
-make
+$ sudo apt install libssl-dev libssh-dev gcc make
+$ git clone https://github.com/ware255/ssh_cracker.git
+ssh_cracker$ cd ssh_cracker
+ssh_cracker$ make
 ```
 
 ## 実行方法
 使い方はこうです。
 ```
-./ssh_cracker -h <IP> -p <Port> -u <user_name>
+ssh_cracker$ ./ssh_cracker -h <IP> -p <Port> -u <user_name>
 ```
 以下が例となります。<br>
 ```
-./ssh_cracker -h 255.255.255.255 -p 22 -u user
+ssh_cracker$ ./ssh_cracker -h 255.255.255.255 -p 22 -u user
 ```
 
 ## 参考
