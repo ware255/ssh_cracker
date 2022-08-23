@@ -12,7 +12,7 @@ Linux場合(だけ)
 ```
 $ sudo apt install libssl-dev libssh-dev gcc make
 $ git clone https://github.com/ware255/ssh_cracker.git
-ssh_cracker$ cd ssh_cracker
+$ cd ssh_cracker
 ssh_cracker$ make
 ```
 
