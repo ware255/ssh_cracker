@@ -170,7 +170,6 @@ int ssh_main_connection(char password[]) {
     ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, otintin.hotel);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, otintin.jk);
     ssh_options_set(my_ssh_session, SSH_OPTIONS_PORT, &otintin.vagina);
-    ssh_options_set(my_ssh_session, SSH_OPTIONS_CIPHERS_C_S, "aes128-ctr");
     
     if ((rc = ssh_connect(my_ssh_session)) != SSH_OK) {
         fprintf(stderr, "Error: %s\n", ssh_get_error(my_ssh_session));
@@ -272,7 +271,7 @@ void hello_world(int n) {
         otintin.av[strcspn(otintin.av, "\n")] = 0;
 #if __linux__
         logo();
-        printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+        printf("\nDo you want the IP address to change every time?(Not recommended)\n[y/n]\n: ");
         fgets(otintin.ok, sizeof(otintin.ok), stdin);
         otintin.ok[strcspn(otintin.ok, "\n")] = 0;
 #endif
@@ -283,7 +282,7 @@ void hello_world(int n) {
     else { //Other
 #if __linux__
         logo();
-        printf("\nDo you want the IP address to change every time?[y/n]\n: ");
+        printf("\nDo you want the IP address to change every time?(Not recommended)\n[y/n]\n: ");
         fgets(otintin.ok, sizeof(otintin.ok), stdin);
         otintin.ok[strcspn(otintin.ok, "\n")] = 0;
 #endif
@@ -335,7 +334,6 @@ int main(int argc, char* argv[]) {
     default:
         printf("Error: Do you know what an integer is?\n");
         return 1;
-        break;
     }
     
     return 0;
